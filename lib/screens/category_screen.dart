@@ -140,10 +140,14 @@ class _CategoryScreenState extends State<CategoryScreen> {
                 ),
         ),
       ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: FloatingActionButton.extended(
         onPressed: onNewNoteAsked,
         backgroundColor: Colors.black,
-        child: const Icon(
+        label: Text(
+          "Add Link",
+          style: TextStyle(color: Colors.white),
+        ),
+        icon: Icon(
           Icons.add,
           color: Colors.white,
         ),

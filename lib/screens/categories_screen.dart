@@ -160,10 +160,14 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
               return Center(child: CircularProgressIndicator());
             }
           }),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: FloatingActionButton.extended(
         onPressed: onNewCategoryAsked,
         backgroundColor: Colors.black,
-        child: Icon(
+        label: Text(
+          "New category",
+          style: TextStyle(color: Colors.white),
+        ),
+        icon: Icon(
           Icons.add,
           color: Colors.white,
         ),
