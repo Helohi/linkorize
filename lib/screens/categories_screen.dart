@@ -71,7 +71,6 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
       body: FutureBuilder(
           future: _getCategoriesOnce,
           builder: (context, snapshot) {
-            print(snapshot);
             if (snapshot.connectionState == ConnectionState.done) {
               return categories.isEmpty
                   ? Center(
