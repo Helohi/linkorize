@@ -20,8 +20,8 @@ class CategoriesScreen extends StatefulWidget {
 }
 
 class _CategoriesScreenState extends State<CategoriesScreen> {
-  List<Category> categories = [];
-  List<int> selectedCategories = [];
+  final List<Category> categories = [];
+  final Set<int> selectedCategories = {};
   late Future<void> _getCategoriesOnce;
 
   @override
@@ -44,9 +44,12 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
             ? null
             : IconButton(
                 onPressed: () {
+                  final selectedLength = selectedCategories.length;
                   selectedCategories.clear();
-                  for (int i = 0; i < categories.length; i++) {
-                    selectedCategories.add(i);
+                  if (selectedLength != categories.length) {
+                    selectedCategories.addAll(
+                      List.generate(categories.length, (i) => i),
+                    );
                   }
                   setState(() {});
                 },
@@ -59,6 +62,14 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
         ),
         centerTitle: true,
         actions: [
+          if (selectedCategories.length == 1)
+            IconButton(
+              onPressed: () {
+                editCategory(selectedCategories.first);
+                setState(() => selectedCategories.clear());
+              },
+              icon: Icon(Icons.edit),
+            ),
           if (selectedCategories.isNotEmpty)
             IconButton(
               onPressed: () {
@@ -185,7 +196,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
     );
   }
 
-  Future<void> showDeleteConfirmationForList(List<int> indexes) {
+  Future<void> showDeleteConfirmationForList(Set<int> indexes) {
     return showDialog(
       context: context,
       builder: (context) => ConfirmDeletionAlertDialog(

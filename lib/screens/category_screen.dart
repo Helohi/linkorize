@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:linkorize/managers/memory_data_manager.dart';
 import 'package:linkorize/models/category.dart';
+import 'package:linkorize/screens/confirm_deletion_alert_dialog.dart';
 import 'package:linkorize/screens/edit_note_alert_dialog.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -24,6 +25,8 @@ class CategoryScreen extends StatefulWidget {
 }
 
 class _CategoryScreenState extends State<CategoryScreen> {
+  final Set<int> selectedNotes = {};
+
   @override
   void initState() {
     super.initState();
@@ -54,6 +57,37 @@ class _CategoryScreenState extends State<CategoryScreen> {
       appBar: AppBar(
         title: Text(widget.category.name),
         centerTitle: true,
+        actions: [
+          if (selectedNotes.length == 1)
+            IconButton(
+              onPressed: () {
+                onEditNoteAsked(selectedNotes.first);
+                setState(() => selectedNotes.clear());
+              },
+              icon: Icon(Icons.edit),
+            ),
+          if (selectedNotes.isNotEmpty)
+            IconButton(
+              onPressed: () => onDeleteSelectedNotesAsked(),
+              icon: Icon(Icons.delete),
+            ),
+          if (selectedNotes.isNotEmpty)
+            IconButton(
+                onPressed: () {
+                  final selectedLength = selectedNotes.length;
+                  selectedNotes.clear();
+                  if (selectedLength != widget.category.notes.length) {
+                    selectedNotes.addAll(
+                      List.generate(
+                        widget.category.notes.length,
+                        (index) => index,
+                      ),
+                    );
+                  }
+                  setState(() {});
+                },
+                icon: Icon(Icons.checklist))
+        ],
       ),
       body: Padding(
         padding: EdgeInsets.only(bottom: 8.0, left: 8.0, right: 8.0),
@@ -62,75 +96,61 @@ class _CategoryScreenState extends State<CategoryScreen> {
           itemBuilder: (context, index) => index != widget.category.notes.length
               ? Padding(
                   padding: EdgeInsets.all(8.0),
-                  child: Dismissible(
-                    key: UniqueKey(),
-                    confirmDismiss: (direction) async {
-                      if (direction == DismissDirection.startToEnd) {
-                        deleteNoteInCategory(index);
-                        return true;
-                      } else if (direction == DismissDirection.endToStart) {
-                        onEditNoteAsked(index);
-                      }
-                      return null;
-                    },
-                    background: Container(
-                      color: Colors.red,
-                      child: Align(
-                        alignment: Alignment(-0.9, 0.0),
-                        child: Icon(Icons.delete, color: Colors.white),
+                  child: Material(
+                    color: selectedNotes.contains(index)
+                        ? Colors.grey
+                        : Colors.white,
+                    borderRadius: BorderRadius.circular(8.0),
+                    child: InkWell(
+                      onLongPress: () => setState(
+                        () => selectedNotes.add(index),
                       ),
-                    ),
-                    secondaryBackground: Container(
-                      color: Colors.blue,
-                      child: Align(
-                        alignment: Alignment(0.9, 0.0),
-                        child: Icon(Icons.edit, color: Colors.white),
-                      ),
-                    ),
-                    child: Material(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(8.0),
-                      child: InkWell(
-                        onTap: widget.category.notes[index].link.isNotEmpty
-                            ? () async {
-                                final data =
-                                    widget.category.notes[index].link.trim();
-                                final uri = Uri.tryParse(data);
-                                if (uri == null) {
-                                  copyToClipboard(data);
-                                  return;
-                                }
+                      onTap: selectedNotes.isNotEmpty
+                          ? () => setState(() => selectedNotes.contains(index)
+                              ? selectedNotes.remove(index)
+                              : selectedNotes.add(index))
+                          : widget.category.notes[index].link.isNotEmpty
+                              ? () async {
+                                  final data =
+                                      widget.category.notes[index].link.trim();
+                                  final uri = Uri.tryParse(data);
+                                  if (uri == null ||
+                                      !uri.hasScheme ||
+                                      uri.host.isEmpty) {
+                                    copyToClipboard(data);
+                                    return;
+                                  }
 
-                                launchUrl(uri)
-                                    .then(
-                                      (value) =>
-                                          value ? null : copyToClipboard(data),
-                                    )
-                                    .onError(
-                                      (error, stackTrace) =>
-                                          copyToClipboard(data),
-                                    );
-                              }
-                            : null,
-                        child: Column(
-                          children: [
-                            Row(),
-                            if (widget.category.notes[index].title != null)
-                              Padding(
-                                padding: EdgeInsets.all(8.0),
-                                child: Text(
-                                  widget.category.notes[index].title!,
-                                  style: TextStyle(fontSize: 24.0),
-                                ),
-                              ),
+                                  launchUrl(uri, webOnlyWindowName: "_blank")
+                                      .then(
+                                        (value) => value
+                                            ? null
+                                            : copyToClipboard(data),
+                                      )
+                                      .onError(
+                                        (error, stackTrace) =>
+                                            copyToClipboard(data),
+                                      );
+                                }
+                              : null,
+                      child: Column(
+                        children: [
+                          Row(),
+                          if (widget.category.notes[index].title != null)
                             Padding(
-                              padding: const EdgeInsets.all(8.0),
+                              padding: EdgeInsets.all(8.0),
                               child: Text(
-                                widget.category.notes[index].link,
+                                widget.category.notes[index].title!,
+                                style: TextStyle(fontSize: 24.0),
                               ),
                             ),
-                          ],
-                        ),
+                          Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Text(
+                              widget.category.notes[index].link,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -170,6 +190,21 @@ class _CategoryScreenState extends State<CategoryScreen> {
         bottomButtonTitle: "Save",
         autofocusOnTitle: true,
         onBottomButtonPressed: onBottomButtonPressed!,
+      ),
+    );
+  }
+
+  void onDeleteSelectedNotesAsked() {
+    showDialog(
+      context: context,
+      builder: (context) => ConfirmDeletionAlertDialog(
+        title: "Are you sure you want to delete ${selectedNotes.length} links?",
+        onConfirm: () {
+          for (int i in selectedNotes) {
+            deleteNoteInCategory(i);
+          }
+          setState(() => selectedNotes.clear());
+        },
       ),
     );
   }
