@@ -15,22 +15,24 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return ChangeNotifierProvider<SharedTextManager>(
       create: (context) => SharedTextManager(),
-      builder: (context, child) => OrientationBuilder(
-        builder: (context, orientation) => orientation == Orientation.portrait
-            ? MaterialApp(
-                themeMode: ThemeMode.light,
-                home: CategoriesScreen(),
-              )
-            : Center(
-                child: Container(
-                  decoration: BoxDecoration(color: Colors.grey),
-                  width: MediaQuery.sizeOf(context).height * 5 / 6,
-                  child: MaterialApp(
-                    themeMode: ThemeMode.light,
-                    home: CategoriesScreen(),
-                  ),
-                ),
-              ),
+      builder: (context, child) => MaterialApp(
+        themeMode: ThemeMode.light,
+        builder: (context, child) {
+          assert(child != null, "Material App got null child!");
+          return OrientationBuilder(
+            builder: (context, orientation) =>
+                orientation == Orientation.portrait
+                    ? child!
+                    : Center(
+                        child: Container(
+                          color: Colors.grey,
+                          width: MediaQuery.sizeOf(context).height * 5 / 6,
+                          child: child!,
+                        ),
+                      ),
+          );
+        },
+        home: CategoriesScreen(),
       ),
     );
   }
