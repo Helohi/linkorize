@@ -20,19 +20,20 @@ class CategoriesScreen extends StatefulWidget {
 }
 
 class _CategoriesScreenState extends State<CategoriesScreen> {
-  List<Category> categories = [];
-  List<int> selectedCategories = [];
+  final List<Category> categories = [];
+  final Set<int> selectedCategories = {};
+  late Future<void> _getCategoriesOnce;
 
   @override
   void initState() {
     super.initState();
 
-    getAllCategories();
-
     WidgetsBinding.instance.addPostFrameCallback(
       (timeStamp) => Provider.of<SharedTextManager>(context, listen: false)
           .checkForNewMessages(),
     );
+
+    _getCategoriesOnce = getAllCategories();
   }
 
   @override
@@ -43,9 +44,12 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
             ? null
             : IconButton(
                 onPressed: () {
+                  final selectedLength = selectedCategories.length;
                   selectedCategories.clear();
-                  for (int i = 0; i < categories.length; i++) {
-                    selectedCategories.add(i);
+                  if (selectedLength != categories.length) {
+                    selectedCategories.addAll(
+                      List.generate(categories.length, (i) => i),
+                    );
                   }
                   setState(() {});
                 },
@@ -58,6 +62,14 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
         ),
         centerTitle: true,
         actions: [
+          if (selectedCategories.length == 1)
+            IconButton(
+              onPressed: () {
+                editCategory(selectedCategories.first);
+                setState(() => selectedCategories.clear());
+              },
+              icon: Icon(Icons.edit),
+            ),
           if (selectedCategories.isNotEmpty)
             IconButton(
               onPressed: () {
@@ -67,89 +79,106 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
             )
         ],
       ),
-      body: categories.isEmpty
-          ? Center(
-              child: Text(
-                "Create Your First Category",
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 42,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey,
-                ),
-              ),
-            )
-          : ListView.builder(
-              itemCount: categories.length + 1,
-              itemBuilder: (context, index) => index < categories.length
-                  ? Dismissible(
-                      key: UniqueKey(),
-                      confirmDismiss: (direction) async {
-                        if (direction == DismissDirection.startToEnd) {
-                          if (categories[index].notes.isEmpty) {
-                            return true;
-                          } else {
-                            showDeleteConfirmation(index);
-                          }
-                        } else if (direction == DismissDirection.endToStart) {
-                          editCategory(index);
-                        }
-                        return null;
-                      },
-                      background: Container(
-                        color: Colors.red,
-                        child: Align(
-                          alignment: Alignment(-0.9, 0.0),
-                          child: Icon(Icons.delete, color: Colors.white),
+      body: FutureBuilder(
+          future: _getCategoriesOnce,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.done) {
+              return categories.isEmpty
+                  ? Center(
+                      child: Text(
+                        "Create Your First Category",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 42,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey,
                         ),
-                      ),
-                      onDismissed: (direction) => removeCategory(index),
-                      secondaryBackground: Container(
-                        color: Colors.blue,
-                        child: Align(
-                          alignment: Alignment(0.9, 0.0),
-                          child: Icon(Icons.edit, color: Colors.white),
-                        ),
-                      ),
-                      child: ListTile(
-                        selected: selectedCategories.contains(index),
-                        selectedTileColor: Colors.grey[350],
-                        onTap: () {
-                          selectedCategories.isEmpty
-                              ? Navigator.of(context).push(
-                                  CupertinoPageRoute(
-                                    builder: (context) => CategoryScreen(
-                                      category: categories[index],
-                                      linksToCreateNewNotes:
-                                          Provider.of<SharedTextManager>(
-                                                  context,
-                                                  listen: false)
-                                              .sharedText,
-                                    ),
-                                  ),
-                                )
-                              : setState(
-                                  () => selectedCategories.contains(index)
-                                      ? selectedCategories.remove(index)
-                                      : selectedCategories.add(index),
-                                );
-                        },
-                        onLongPress: () =>
-                            setState(() => selectedCategories.add(index)),
-                        leading: CircleAvatar(
-                          backgroundColor: categories[index].avatarColor,
-                          radius: 12,
-                        ),
-                        title: Text(categories[index].name),
-                        trailing: Icon(Icons.chevron_right),
                       ),
                     )
-                  : SizedBox(height: 60),
-            ),
-      floatingActionButton: FloatingActionButton(
+                  : ListView.builder(
+                      itemCount: categories.length + 1,
+                      itemBuilder: (context, index) => index < categories.length
+                          ? Dismissible(
+                              key: UniqueKey(),
+                              confirmDismiss: (direction) async {
+                                if (direction == DismissDirection.startToEnd) {
+                                  if (categories[index].notes.isEmpty) {
+                                    return true;
+                                  } else {
+                                    showDeleteConfirmation(index);
+                                  }
+                                } else if (direction ==
+                                    DismissDirection.endToStart) {
+                                  editCategory(index);
+                                }
+                                return null;
+                              },
+                              background: Container(
+                                color: Colors.red,
+                                child: Align(
+                                  alignment: Alignment(-0.9, 0.0),
+                                  child:
+                                      Icon(Icons.delete, color: Colors.white),
+                                ),
+                              ),
+                              onDismissed: (direction) => removeCategory(index),
+                              secondaryBackground: Container(
+                                color: Colors.blue,
+                                child: Align(
+                                  alignment: Alignment(0.9, 0.0),
+                                  child: Icon(Icons.edit, color: Colors.white),
+                                ),
+                              ),
+                              child: ListTile(
+                                selected: selectedCategories.contains(index),
+                                selectedTileColor: Colors.grey[350],
+                                onTap: () {
+                                  selectedCategories.isEmpty
+                                      ? Navigator.of(context).push(
+                                          CupertinoPageRoute(
+                                            builder: (context) =>
+                                                CategoryScreen(
+                                              category: categories[index],
+                                              linksToCreateNewNotes: Provider
+                                                      .of<SharedTextManager>(
+                                                          context,
+                                                          listen: false)
+                                                  .sharedText,
+                                            ),
+                                          ),
+                                        )
+                                      : setState(
+                                          () => selectedCategories
+                                                  .contains(index)
+                                              ? selectedCategories.remove(index)
+                                              : selectedCategories.add(index),
+                                        );
+                                },
+                                onLongPress: () => setState(
+                                    () => selectedCategories.add(index)),
+                                leading: CircleAvatar(
+                                  backgroundColor:
+                                      categories[index].avatarColor,
+                                  radius: 12,
+                                ),
+                                title: Text(categories[index].name),
+                                trailing: Icon(Icons.chevron_right),
+                              ),
+                            )
+                          : SizedBox(height: 60),
+                    );
+            } else {
+              return Center(child: CircularProgressIndicator());
+            }
+          }),
+      floatingActionButton: FloatingActionButton.extended(
         onPressed: onNewCategoryAsked,
         backgroundColor: Colors.black,
-        child: Icon(
+        label: Text(
+          "New category",
+          style: TextStyle(color: Colors.white),
+        ),
+        icon: Icon(
           Icons.add,
           color: Colors.white,
         ),
@@ -167,7 +196,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
     );
   }
 
-  Future<void> showDeleteConfirmationForList(List<int> indexes) {
+  Future<void> showDeleteConfirmationForList(Set<int> indexes) {
     return showDialog(
       context: context,
       builder: (context) => ConfirmDeletionAlertDialog(
@@ -243,7 +272,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
     );
   }
 
-  void getAllCategories() async {
-    categories.addAll(await MemoryDataManager.getAllCategories());
+  Future<void> getAllCategories() async {
+    return categories.addAll(await MemoryDataManager.getAllCategories());
   }
 }
